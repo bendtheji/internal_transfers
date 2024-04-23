@@ -2,11 +2,22 @@ package main
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"log"
 	"net/http"
 )
 
+var (
+	dbConfig *EnvDBConfig
+)
+
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	dbConfig = NewEnvDBConfig()
 	r := mux.NewRouter()
 
 	r.HandleFunc("/accounts", createAccountHandler).Methods("POST")
