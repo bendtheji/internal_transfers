@@ -79,3 +79,72 @@ func GetAccount(db *sql.DB, id int) (*Account, error) {
 	}
 	return account, nil
 }
+
+type Transaction struct {
+	TransactionID        string
+	SourceAccountID      int
+	DestinationAccountID int
+	Amount               float64
+}
+
+func CreateTransaction(db *sql.DB, transaction *Transaction) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// check that source account id exists and has enough balance
+	// Confirm that album inventory is enough for the order.
+	var enough bool
+	if err = tx.QueryRow("SELECT (balance >= ?) from accounts where id = ?",
+		transaction.Amount, transaction.SourceAccountID).Scan(&enough); err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("source account does not exist")
+		}
+		return err
+	}
+	if !enough {
+		return fmt.Errorf("not enough money in balance")
+	}
+
+	// check that destination account id exists
+	var destinationId int
+	err = tx.QueryRow("SELECT id from accounts where id = ?", transaction.DestinationAccountID).Scan(&destinationId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("destination account does not exist")
+		}
+		return err
+	}
+
+	// update both records' balances
+	_, err = tx.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ?", transaction.Amount, transaction.SourceAccountID)
+	if err != nil {
+		return fmt.Errorf("could not update balance for source")
+	}
+
+	_, err = tx.Exec("UPDATE accounts SET balance = balance + ? WHERE id = ?", transaction.Amount, transaction.DestinationAccountID)
+	if err != nil {
+		return fmt.Errorf("could not update balance for destination")
+	}
+
+	// insert into transactions table
+	result, err := tx.Exec("INSERT INTO transactions (source_account_id, destination_account_id, transaction_id, amount) VALUES (?, ?, ?, ?)",
+		transaction.SourceAccountID, transaction.DestinationAccountID, transaction.TransactionID, transaction.Amount)
+	if err != nil {
+		return fmt.Errorf("could not insert transaction")
+	}
+
+	// TODO: there's a transaction id here, but need to know what to use it for
+	_, err = result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("could not retrieve transaction")
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("could not commit transaction")
+	}
+
+	return nil
+}
