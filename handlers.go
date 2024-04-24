@@ -30,7 +30,7 @@ func createAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = CreateAccount(db, req.ID, req.Balance)
 	if err != nil {
-		http.Error(w, "Failed to create account", http.StatusInternalServerError)
+		handleApiError(w, err)
 		return
 	}
 
@@ -55,7 +55,7 @@ func getAccountHandler(w http.ResponseWriter, r *http.Request) {
 	// Call the GetUser function to fetch the user data from the database
 	account, err := GetAccount(db, accountId)
 	if err != nil {
-		http.Error(w, "account not found", http.StatusNotFound)
+		handleApiError(w, err)
 		return
 	}
 
@@ -95,7 +95,7 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = CreateTransaction(db, &transaction)
 	if err != nil {
-		http.Error(w, "Failed to create account", http.StatusInternalServerError)
+		handleApiError(w, err)
 		return
 	}
 

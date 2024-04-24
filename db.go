@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"os"
 )
@@ -63,7 +65,11 @@ func CreateAccount(db *sql.DB, id int, balance float64) error {
 	query := "INSERT INTO accounts (id, balance) VALUES (?, ?)"
 	_, err := db.Exec(query, id, balance)
 	if err != nil {
-		return err
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+
+		}
+		return WrapError(err)
 	}
 	return nil
 }
@@ -87,6 +93,8 @@ type Transaction struct {
 	Amount               float64
 }
 
+var NotEnoughBalanceErr = errors.New("Not enough balance")
+
 func CreateTransaction(db *sql.DB, transaction *Transaction) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -100,12 +108,12 @@ func CreateTransaction(db *sql.DB, transaction *Transaction) error {
 	if err = tx.QueryRow("SELECT (balance >= ?) from accounts where id = ?",
 		transaction.Amount, transaction.SourceAccountID).Scan(&enough); err != nil {
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("source account does not exist")
+			return WrapError(fmt.Errorf("source account not found: %w", err))
 		}
 		return err
 	}
 	if !enough {
-		return fmt.Errorf("not enough money in balance")
+		return WrapError(NotEnoughBalanceErr)
 	}
 
 	// check that destination account id exists
@@ -113,7 +121,7 @@ func CreateTransaction(db *sql.DB, transaction *Transaction) error {
 	err = tx.QueryRow("SELECT id from accounts where id = ?", transaction.DestinationAccountID).Scan(&destinationId)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("destination account does not exist")
+			return WrapError(fmt.Errorf("destination account not found: %w", err))
 		}
 		return err
 	}
@@ -121,29 +129,29 @@ func CreateTransaction(db *sql.DB, transaction *Transaction) error {
 	// update both records' balances
 	_, err = tx.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ?", transaction.Amount, transaction.SourceAccountID)
 	if err != nil {
-		return fmt.Errorf("could not update balance for source")
+		return WrapError(fmt.Errorf("could not update balance for source: %w", err))
 	}
 
 	_, err = tx.Exec("UPDATE accounts SET balance = balance + ? WHERE id = ?", transaction.Amount, transaction.DestinationAccountID)
 	if err != nil {
-		return fmt.Errorf("could not update balance for destination")
+		return WrapError(fmt.Errorf("could not update balance for destination: %w", err))
 	}
 
 	// insert into transactions table
 	result, err := tx.Exec("INSERT INTO transactions (source_account_id, destination_account_id, transaction_id, amount) VALUES (?, ?, ?, ?)",
 		transaction.SourceAccountID, transaction.DestinationAccountID, transaction.TransactionID, transaction.Amount)
 	if err != nil {
-		return fmt.Errorf("could not insert transaction")
+		return WrapError(fmt.Errorf("could not insert transaction, %w", err))
 	}
 
 	// TODO: there's a transaction id here, but need to know what to use it for
 	_, err = result.LastInsertId()
 	if err != nil {
-		return fmt.Errorf("could not retrieve transaction")
+		return WrapError(fmt.Errorf("could not retrieve transaction, %w", err))
 	}
 
 	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("could not commit transaction")
+		return WrapError(fmt.Errorf("could not commit transaction, %w", err))
 	}
 
 	return nil
