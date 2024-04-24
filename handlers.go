@@ -28,7 +28,7 @@ func createAccountHandler(w http.ResponseWriter, r *http.Request) {
 	var req CreateAccountRequest
 	json.NewDecoder(r.Body).Decode(&req)
 
-	err = CreateAccount(db, req.ID, req.Balance)
+	err = CreateAccount(r.Context(), db, req.ID, req.Balance)
 	if err != nil {
 		handleApiError(w, err)
 		return
@@ -53,7 +53,7 @@ func getAccountHandler(w http.ResponseWriter, r *http.Request) {
 	accountId, err := strconv.Atoi(idStr)
 
 	// Call the GetUser function to fetch the user data from the database
-	account, err := GetAccount(db, accountId)
+	account, err := GetAccount(r.Context(), db, accountId)
 	if err != nil {
 		handleApiError(w, err)
 		return
@@ -93,7 +93,7 @@ func createTransactionHandler(w http.ResponseWriter, r *http.Request) {
 		Amount:               req.Amount,
 	}
 
-	err = CreateTransaction(db, &transaction)
+	err = CreateTransaction(r.Context(), db, &transaction)
 	if err != nil {
 		handleApiError(w, err)
 		return
