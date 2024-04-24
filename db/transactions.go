@@ -27,7 +27,8 @@ func CreateTransaction(ctx context.Context, db *sql.DB, transaction *Transaction
 	defer tx.Rollback()
 
 	// check that source account id exists and has enough balance
-	// Confirm that album inventory is enough for the order.
+	// we also use the "for update" for the select statement to place a lock
+	// on the row that we want to modify
 	var enough bool
 	if err = tx.QueryRowContext(ctx, "SELECT (balance >= ?) from accounts where id = ? for update",
 		transaction.Amount, transaction.SourceAccountID).Scan(&enough); err != nil {
@@ -41,6 +42,8 @@ func CreateTransaction(ctx context.Context, db *sql.DB, transaction *Transaction
 	}
 
 	// check that destination account id exists
+	// we also use the "for update" for the select statement to place a lock
+	// on the row that we want to modify
 	var destinationId int
 	err = tx.QueryRowContext(ctx, "SELECT id from accounts where id = ? for update", transaction.DestinationAccountID).Scan(&destinationId)
 	if err != nil {
@@ -49,12 +52,12 @@ func CreateTransaction(ctx context.Context, db *sql.DB, transaction *Transaction
 		}
 		return apiError.WrapError(err)
 	}
+
 	// update both records' balances
 	_, err = tx.ExecContext(ctx, "UPDATE accounts SET balance = balance - ? WHERE id = ? ", transaction.Amount, transaction.SourceAccountID)
 	if err != nil {
 		return apiError.WrapError(fmt.Errorf("could not update balance for source: %w", err))
 	}
-
 	_, err = tx.ExecContext(ctx, "UPDATE accounts SET balance = balance + ? WHERE id = ?", transaction.Amount, transaction.DestinationAccountID)
 	if err != nil {
 		return apiError.WrapError(fmt.Errorf("could not update balance for destination: %w", err))
@@ -67,6 +70,7 @@ func CreateTransaction(ctx context.Context, db *sql.DB, transaction *Transaction
 		return apiError.WrapError(fmt.Errorf("could not insert transaction, %w", err))
 	}
 
+	// commit
 	if err = tx.Commit(); err != nil {
 		return apiError.WrapError(fmt.Errorf("could not commit transaction, %w", err))
 	}
