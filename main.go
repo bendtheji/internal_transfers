@@ -5,10 +5,9 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"net/http"
-)
 
-var (
-	dbConfig *EnvDBConfig
+	"github.com/bendtheji/internal_transfers/api"
+	"github.com/bendtheji/internal_transfers/db"
 )
 
 func main() {
@@ -17,12 +16,12 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	dbConfig = NewEnvDBConfig()
+	db.InitDbConfig()
 	r := mux.NewRouter()
 
-	r.HandleFunc("/accounts", createAccountHandler).Methods("POST")
-	r.HandleFunc("/accounts/{id}", getAccountHandler).Methods("GET")
-	r.HandleFunc("/transactions", createTransactionHandler).Methods("POST")
+	r.HandleFunc("/accounts", api.CreateAccountHandler).Methods("POST")
+	r.HandleFunc("/accounts/{id}", api.GetAccountHandler).Methods("GET")
+	r.HandleFunc("/transactions", api.CreateTransactionHandler).Methods("POST")
 
 	log.Println("Server listening on :8090")
 	log.Fatal(http.ListenAndServe(":8090", r))

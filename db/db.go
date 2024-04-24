@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"os"
 	"time"
+
+	apiError "github.com/bendtheji/internal_transfers/errors"
 )
 
 type EnvDBConfig struct {
@@ -17,6 +19,8 @@ type EnvDBConfig struct {
 	password string
 	database string
 }
+
+var DbConfig *EnvDBConfig
 
 func NewEnvDBConfig() *EnvDBConfig {
 	return &EnvDBConfig{
@@ -48,6 +52,10 @@ func (c *EnvDBConfig) GetDatabase() string {
 	return c.database
 }
 
+func InitDbConfig() {
+	DbConfig = NewEnvDBConfig()
+}
+
 func ConnectToDB(config EnvDBConfig) (*sql.DB, error) {
 	connectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", config.GetUsername(), config.GetPassword(), config.GetHost(), config.GetPort(), config.GetDatabase())
 	db, err := sql.Open("mysql", connectionString)
@@ -58,8 +66,8 @@ func ConnectToDB(config EnvDBConfig) (*sql.DB, error) {
 }
 
 type Account struct {
-	id      int
-	balance float64
+	ID      int
+	Balance float64
 }
 
 func CreateAccount(ctx context.Context, db *sql.DB, id int, balance float64) error {
@@ -69,7 +77,7 @@ func CreateAccount(ctx context.Context, db *sql.DB, id int, balance float64) err
 	query := "INSERT INTO accounts (id, balance) VALUES (?, ?)"
 	_, err := db.ExecContext(ctx, query, id, balance)
 	if err != nil {
-		return WrapError(err)
+		return apiError.WrapError(err)
 	}
 	return nil
 }
@@ -82,9 +90,9 @@ func GetAccount(ctx context.Context, db *sql.DB, id int) (*Account, error) {
 	row := db.QueryRowContext(ctx, query, id)
 
 	account := &Account{}
-	err := row.Scan(&account.id, &account.balance)
+	err := row.Scan(&account.ID, &account.Balance)
 	if err != nil {
-		return nil, WrapError(err)
+		return nil, apiError.WrapError(err)
 	}
 	return account, nil
 }
@@ -102,7 +110,7 @@ func CreateTransaction(ctx context.Context, db *sql.DB, transaction *Transaction
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return WrapError(err)
+		return apiError.WrapError(err)
 	}
 	defer tx.Rollback()
 
@@ -112,12 +120,12 @@ func CreateTransaction(ctx context.Context, db *sql.DB, transaction *Transaction
 	if err = tx.QueryRowContext(ctx, "SELECT (balance >= ?) from accounts where id = ? for update",
 		transaction.Amount, transaction.SourceAccountID).Scan(&enough); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return WrapError(fmt.Errorf("source account not found: %w", err))
+			return apiError.WrapError(fmt.Errorf("source account not found: %w", err))
 		}
-		return WrapError(err)
+		return apiError.WrapError(err)
 	}
 	if !enough {
-		return WrapError(NotEnoughBalanceErr)
+		return apiError.WrapError(apiError.NotEnoughBalanceErr)
 	}
 
 	// check that destination account id exists
@@ -125,30 +133,30 @@ func CreateTransaction(ctx context.Context, db *sql.DB, transaction *Transaction
 	err = tx.QueryRowContext(ctx, "SELECT id from accounts where id = ? for update", transaction.DestinationAccountID).Scan(&destinationId)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return WrapError(fmt.Errorf("destination account not found: %w", err))
+			return apiError.WrapError(fmt.Errorf("destination account not found: %w", err))
 		}
-		return WrapError(err)
+		return apiError.WrapError(err)
 	}
 	// update both records' balances
 	_, err = tx.ExecContext(ctx, "UPDATE accounts SET balance = balance - ? WHERE id = ? ", transaction.Amount, transaction.SourceAccountID)
 	if err != nil {
-		return WrapError(fmt.Errorf("could not update balance for source: %w", err))
+		return apiError.WrapError(fmt.Errorf("could not update balance for source: %w", err))
 	}
 
 	_, err = tx.ExecContext(ctx, "UPDATE accounts SET balance = balance + ? WHERE id = ?", transaction.Amount, transaction.DestinationAccountID)
 	if err != nil {
-		return WrapError(fmt.Errorf("could not update balance for destination: %w", err))
+		return apiError.WrapError(fmt.Errorf("could not update balance for destination: %w", err))
 	}
 
 	// insert into transactions table
 	_, err = tx.ExecContext(ctx, "INSERT INTO transactions (source_account_id, destination_account_id, transaction_id, amount) VALUES (?, ?, ?, ?)",
 		transaction.SourceAccountID, transaction.DestinationAccountID, transaction.TransactionID, transaction.Amount)
 	if err != nil {
-		return WrapError(fmt.Errorf("could not insert transaction, %w", err))
+		return apiError.WrapError(fmt.Errorf("could not insert transaction, %w", err))
 	}
 
 	if err = tx.Commit(); err != nil {
-		return WrapError(fmt.Errorf("could not commit transaction, %w", err))
+		return apiError.WrapError(fmt.Errorf("could not commit transaction, %w", err))
 	}
 
 	return nil

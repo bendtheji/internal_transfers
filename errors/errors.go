@@ -1,4 +1,4 @@
-package main
+package errors
 
 import (
 	"context"
@@ -47,7 +47,7 @@ func WrapError(err error) *ApiError {
 	}
 }
 
-func handleApiError(w http.ResponseWriter, err error) {
+func HandleApiError(w http.ResponseWriter, err error) {
 	if err, ok := err.(*ApiError); ok {
 		statusCode, msg := err.ApiError()
 		http.Error(w, msg, statusCode)
