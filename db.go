@@ -7,6 +7,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"os"
+	"time"
 )
 
 type EnvDBConfig struct {
@@ -105,7 +106,7 @@ func CreateTransaction(db *sql.DB, transaction *Transaction) error {
 	// check that source account id exists and has enough balance
 	// Confirm that album inventory is enough for the order.
 	var enough bool
-	if err = tx.QueryRow("SELECT (balance >= ?) from accounts where id = ?",
+	if err = tx.QueryRow("SELECT (balance >= ?) from accounts where id = ? for update",
 		transaction.Amount, transaction.SourceAccountID).Scan(&enough); err != nil {
 		if err == sql.ErrNoRows {
 			return WrapError(fmt.Errorf("source account not found: %w", err))
@@ -115,10 +116,10 @@ func CreateTransaction(db *sql.DB, transaction *Transaction) error {
 	if !enough {
 		return WrapError(NotEnoughBalanceErr)
 	}
-
+	
 	// check that destination account id exists
 	var destinationId int
-	err = tx.QueryRow("SELECT id from accounts where id = ?", transaction.DestinationAccountID).Scan(&destinationId)
+	err = tx.QueryRow("SELECT id from accounts where id = ? for update", transaction.DestinationAccountID).Scan(&destinationId)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return WrapError(fmt.Errorf("destination account not found: %w", err))
@@ -126,8 +127,10 @@ func CreateTransaction(db *sql.DB, transaction *Transaction) error {
 		return err
 	}
 
+	time.Sleep(60 * time.Second)
+
 	// update both records' balances
-	_, err = tx.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ?", transaction.Amount, transaction.SourceAccountID)
+	_, err = tx.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ? ", transaction.Amount, transaction.SourceAccountID)
 	if err != nil {
 		return WrapError(fmt.Errorf("could not update balance for source: %w", err))
 	}
