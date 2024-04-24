@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"os"
 )
 
@@ -51,4 +52,30 @@ func ConnectToDB(config EnvDBConfig) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+type Account struct {
+	id      int
+	balance float64
+}
+
+func CreateAccount(db *sql.DB, id int, balance float64) error {
+	query := "INSERT INTO accounts (id, balance) VALUES (?, ?)"
+	_, err := db.Exec(query, id, balance)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetAccount(db *sql.DB, id int) (*Account, error) {
+	query := "SELECT * FROM accounts WHERE id = ?"
+	row := db.QueryRow(query, id)
+
+	account := &Account{}
+	err := row.Scan(&account.id, &account.balance)
+	if err != nil {
+		return nil, err
+	}
+	return account, nil
 }
