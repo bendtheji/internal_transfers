@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/shopspring/decimal"
 	"net/http"
 	"strconv"
 
@@ -12,13 +13,13 @@ import (
 )
 
 type CreateAccountRequest struct {
-	ID      int     `json:"account_id"`
-	Balance float64 `json:"initial_balance"`
+	ID      int    `json:"account_id"`
+	Balance string `json:"initial_balance"`
 }
 
 type GetAccountResponse struct {
-	ID      int     `json:"account_id"`
-	Balance float64 `json:"balance"`
+	ID      int    `json:"account_id"`
+	Balance string `json:"balance"`
 }
 
 func CreateAccountHandler(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +30,11 @@ func CreateAccountHandler(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 
 	var req CreateAccountRequest
-	json.NewDecoder(r.Body).Decode(&req)
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		apiError.HandleApiError(w, apiError.HandleError(fmt.Errorf("%w: %w", apiError.ReqUnmarshalTypeErr, err)))
+		return
+	}
 
 	// check that ID and balance is valid values
 	if req.ID <= 0 {
@@ -37,12 +42,19 @@ func CreateAccountHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Balance <= 0 {
+	balance, err := decimal.NewFromString(req.Balance)
+	if err != nil {
 		apiError.HandleApiError(w, apiError.HandleError(fmt.Errorf("%w: %v", apiError.InvalidInitialBalanceErr, req.Balance)))
 		return
 	}
 
-	err = dbPackage.CreateAccount(r.Context(), db, req.ID, req.Balance)
+	balance = balance.Truncate(2)
+	if balance.LessThanOrEqual(decimal.Zero) {
+		apiError.HandleApiError(w, apiError.HandleError(fmt.Errorf("%w: %v", apiError.InvalidInitialBalanceErr, req.Balance)))
+		return
+	}
+
+	err = dbPackage.CreateAccount(r.Context(), db, req.ID, balance)
 	if err != nil {
 		apiError.HandleApiError(w, err)
 		return
@@ -79,7 +91,7 @@ func GetAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 	accountResponse := GetAccountResponse{
 		account.ID,
-		account.Balance,
+		account.Balance.String(),
 	}
 
 	// Convert the user object to JSON and send it in the response

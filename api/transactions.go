@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"net/http"
 
 	dbPackage "github.com/bendtheji/internal_transfers/db"
@@ -10,10 +11,10 @@ import (
 )
 
 type CreateTransactionRequest struct {
-	SourceAccountID      int     `json:"source_account_id"`
-	DestinationAccountID int     `json:"destination_account_id"`
-	TransactionID        string  `json:"transaction_id"`
-	Amount               float64 `json:"amount"`
+	SourceAccountID      int    `json:"source_account_id"`
+	DestinationAccountID int    `json:"destination_account_id"`
+	TransactionID        string `json:"transaction_id"`
+	Amount               string `json:"amount"`
 }
 
 func CreateTransactionHandler(w http.ResponseWriter, r *http.Request) {
@@ -24,9 +25,20 @@ func CreateTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 
 	var req CreateTransactionRequest
-	json.NewDecoder(r.Body).Decode(&req)
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		apiError.HandleApiError(w, apiError.HandleError(fmt.Errorf("%w: %w", apiError.ReqUnmarshalTypeErr, err)))
+		return
+	}
 
-	if req.Amount <= 0 {
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		apiError.HandleApiError(w, apiError.HandleError(fmt.Errorf("%w: %v", apiError.InvalidTransactionAmountErr, req.Amount)))
+		return
+	}
+
+	amount = amount.Truncate(2)
+	if amount.LessThanOrEqual(decimal.Zero) {
 		apiError.HandleApiError(w, apiError.HandleError(fmt.Errorf("%w: %v", apiError.InvalidTransactionAmountErr, req.Amount)))
 		return
 	}
@@ -35,7 +47,7 @@ func CreateTransactionHandler(w http.ResponseWriter, r *http.Request) {
 		TransactionID:        req.TransactionID,
 		SourceAccountID:      req.SourceAccountID,
 		DestinationAccountID: req.DestinationAccountID,
-		Amount:               req.Amount,
+		Amount:               amount,
 	}
 
 	err = dbPackage.CreateTransaction(r.Context(), db, &transaction)

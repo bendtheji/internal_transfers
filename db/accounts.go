@@ -4,15 +4,16 @@ import (
 	"context"
 	"database/sql"
 	apiError "github.com/bendtheji/internal_transfers/errors"
+	"github.com/shopspring/decimal"
 	"time"
 )
 
 type Account struct {
 	ID      int
-	Balance float64
+	Balance decimal.Decimal
 }
 
-func CreateAccount(ctx context.Context, db *sql.DB, id int, balance float64) error {
+func CreateAccount(ctx context.Context, db *sql.DB, id int, balance decimal.Decimal) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 

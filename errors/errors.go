@@ -26,6 +26,7 @@ var (
 	InvalidAccountIDErr         = errors.New("invalid account id")
 	InvalidInitialBalanceErr    = errors.New("invalid initial balance")
 	InvalidTransactionAmountErr = errors.New("invalid transaction amount")
+	ReqUnmarshalTypeErr         = errors.New("invalid request type")
 )
 
 func HandleError(err error) *ApiError {
@@ -44,6 +45,8 @@ func HandleError(err error) *ApiError {
 	case errors.Is(err, InvalidInitialBalanceErr):
 		return &ApiError{statusCode: http.StatusBadRequest, message: err.Error()}
 	case errors.Is(err, InvalidTransactionAmountErr):
+		return &ApiError{statusCode: http.StatusBadRequest, message: err.Error()}
+	case errors.Is(err, ReqUnmarshalTypeErr):
 		return &ApiError{statusCode: http.StatusBadRequest, message: err.Error()}
 
 	case errors.Is(err, context.DeadlineExceeded):

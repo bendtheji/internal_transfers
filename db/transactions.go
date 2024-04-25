@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	apiError "github.com/bendtheji/internal_transfers/errors"
+	"github.com/shopspring/decimal"
 	"time"
 )
 
@@ -13,7 +14,7 @@ type Transaction struct {
 	TransactionID        string
 	SourceAccountID      int
 	DestinationAccountID int
-	Amount               float64
+	Amount               decimal.Decimal
 }
 
 func CreateTransaction(ctx context.Context, db *sql.DB, transaction *Transaction) error {
