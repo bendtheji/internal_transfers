@@ -54,6 +54,10 @@ func GetAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Convert 'id' to an integer
 	accountId, err := strconv.Atoi(idStr)
+	if err != nil {
+		apiError.HandleApiError(w, apiError.WrapError(fmt.Errorf("%w: %v", apiError.InvalidAccountIDErr, idStr)))
+		return
+	}
 
 	// Call the GetUser function to fetch the user data from the database
 	account, err := dbPackage.GetAccount(r.Context(), db, accountId)
