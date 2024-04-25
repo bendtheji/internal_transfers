@@ -31,6 +31,17 @@ func CreateAccountHandler(w http.ResponseWriter, r *http.Request) {
 	var req CreateAccountRequest
 	json.NewDecoder(r.Body).Decode(&req)
 
+	// check that ID and balance is valid values
+	if req.ID <= 0 {
+		apiError.HandleApiError(w, apiError.WrapError(fmt.Errorf("%w: %v", apiError.InvalidAccountIDErr, req.ID)))
+		return
+	}
+
+	if req.Balance <= 0 {
+		apiError.HandleApiError(w, apiError.WrapError(fmt.Errorf("%w: %v", apiError.InvalidInitialBalanceErr, req.Balance)))
+		return
+	}
+
 	err = dbPackage.CreateAccount(r.Context(), db, req.ID, req.Balance)
 	if err != nil {
 		apiError.HandleApiError(w, err)

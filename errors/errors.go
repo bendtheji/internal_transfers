@@ -23,6 +23,7 @@ func (e *ApiError) ApiError() (int, string) {
 
 var NotEnoughBalanceErr = errors.New("Not enough balance")
 var InvalidAccountIDErr = errors.New("Invalid account id")
+var InvalidInitialBalanceErr = errors.New("Invalid initial balance")
 
 func WrapError(err error) *ApiError {
 	var mysqlErr *mysql.MySQLError
@@ -41,6 +42,8 @@ func WrapError(err error) *ApiError {
 	case errors.Is(err, NotEnoughBalanceErr):
 		return &ApiError{statusCode: http.StatusBadRequest, message: err.Error()}
 	case errors.Is(err, InvalidAccountIDErr):
+		return &ApiError{statusCode: http.StatusBadRequest, message: err.Error()}
+	case errors.Is(err, InvalidInitialBalanceErr):
 		return &ApiError{statusCode: http.StatusBadRequest, message: err.Error()}
 	case errors.Is(err, context.DeadlineExceeded):
 		return &ApiError{statusCode: http.StatusGatewayTimeout, message: err.Error()}
