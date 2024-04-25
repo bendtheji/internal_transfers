@@ -110,7 +110,7 @@ Account created
 
 This endpoint allows two accounts to transfer money from each other. `source_account_id` and `destination_account_id` should both be present in the `accounts` table.
 
-`transaction_id` is supposed to be a unique identifier for the transaction. This is meant to prevent duplicate transactions from occurring, if say there are multiple upstream requests to make the transaction. The example below uses a timestamp format, but it should be something more unique. One way would be to concatenate the timestamp with some metadata of the two accounts involved to generate a more unique identifier. Another way is to generate a random string of characters to be used as an identifier. 
+`transaction_id` is supposed to be a unique identifier for the transaction. This is meant to prevent duplicate transactions from occurring, if say there are multiple upstream requests to make the transaction. The example below uses a timestamp format, but it should be something more unique. One way would be to concatenate the timestamp with some metadata of the two accounts involved to generate a more unique identifier. Another way is to generate a random string of characters to be used as an identifier. Trying to insert the same `transaction_id` will fail since it's used as a primary key in the `transactions` table, rolling back any changes made by the transaction so far.
 
 Request Body:
 ```
