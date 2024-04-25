@@ -26,6 +26,11 @@ func CreateTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	var req CreateTransactionRequest
 	json.NewDecoder(r.Body).Decode(&req)
 
+	if req.Amount <= 0 {
+		apiError.HandleApiError(w, apiError.WrapError(fmt.Errorf("%w: %v", apiError.InvalidTransactionAmountErr, req.Amount)))
+		return
+	}
+
 	transaction := dbPackage.Transaction{
 		TransactionID:        req.TransactionID,
 		SourceAccountID:      req.SourceAccountID,
