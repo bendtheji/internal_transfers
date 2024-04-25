@@ -22,7 +22,7 @@ func CreateTransaction(ctx context.Context, db *sql.DB, transaction *Transaction
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return apiError.WrapError(err)
+		return apiError.HandleError(err)
 	}
 	defer tx.Rollback()
 
@@ -33,12 +33,12 @@ func CreateTransaction(ctx context.Context, db *sql.DB, transaction *Transaction
 	if err = tx.QueryRowContext(ctx, "SELECT (balance >= ?) from accounts where id = ? for update",
 		transaction.Amount, transaction.SourceAccountID).Scan(&enough); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return apiError.WrapError(fmt.Errorf("source account not found: %w", err))
+			return apiError.HandleError(fmt.Errorf("source account not found: %w", err))
 		}
-		return apiError.WrapError(err)
+		return apiError.HandleError(err)
 	}
 	if !enough {
-		return apiError.WrapError(apiError.NotEnoughBalanceErr)
+		return apiError.HandleError(apiError.NotEnoughBalanceErr)
 	}
 
 	// check that destination account id exists
@@ -48,31 +48,31 @@ func CreateTransaction(ctx context.Context, db *sql.DB, transaction *Transaction
 	err = tx.QueryRowContext(ctx, "SELECT id from accounts where id = ? for update", transaction.DestinationAccountID).Scan(&destinationId)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return apiError.WrapError(fmt.Errorf("destination account not found: %w", err))
+			return apiError.HandleError(fmt.Errorf("destination account not found: %w", err))
 		}
-		return apiError.WrapError(err)
+		return apiError.HandleError(err)
 	}
 
 	// update both records' balances
 	_, err = tx.ExecContext(ctx, "UPDATE accounts SET balance = balance - ? WHERE id = ? ", transaction.Amount, transaction.SourceAccountID)
 	if err != nil {
-		return apiError.WrapError(fmt.Errorf("could not update balance for source: %w", err))
+		return apiError.HandleError(fmt.Errorf("could not update balance for source: %w", err))
 	}
 	_, err = tx.ExecContext(ctx, "UPDATE accounts SET balance = balance + ? WHERE id = ?", transaction.Amount, transaction.DestinationAccountID)
 	if err != nil {
-		return apiError.WrapError(fmt.Errorf("could not update balance for destination: %w", err))
+		return apiError.HandleError(fmt.Errorf("could not update balance for destination: %w", err))
 	}
 
 	// insert into transactions table
 	_, err = tx.ExecContext(ctx, "INSERT INTO transactions (source_account_id, destination_account_id, transaction_id, amount) VALUES (?, ?, ?, ?)",
 		transaction.SourceAccountID, transaction.DestinationAccountID, transaction.TransactionID, transaction.Amount)
 	if err != nil {
-		return apiError.WrapError(fmt.Errorf("could not insert transaction, %w", err))
+		return apiError.HandleError(fmt.Errorf("could not insert transaction, %w", err))
 	}
 
 	// commit
 	if err = tx.Commit(); err != nil {
-		return apiError.WrapError(fmt.Errorf("could not commit transaction, %w", err))
+		return apiError.HandleError(fmt.Errorf("could not commit transaction, %w", err))
 	}
 
 	return nil

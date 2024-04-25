@@ -33,12 +33,12 @@ func CreateAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 	// check that ID and balance is valid values
 	if req.ID <= 0 {
-		apiError.HandleApiError(w, apiError.WrapError(fmt.Errorf("%w: %v", apiError.InvalidAccountIDErr, req.ID)))
+		apiError.HandleApiError(w, apiError.HandleError(fmt.Errorf("%w: %v", apiError.InvalidAccountIDErr, req.ID)))
 		return
 	}
 
 	if req.Balance <= 0 {
-		apiError.HandleApiError(w, apiError.WrapError(fmt.Errorf("%w: %v", apiError.InvalidInitialBalanceErr, req.Balance)))
+		apiError.HandleApiError(w, apiError.HandleError(fmt.Errorf("%w: %v", apiError.InvalidInitialBalanceErr, req.Balance)))
 		return
 	}
 
@@ -66,7 +66,7 @@ func GetAccountHandler(w http.ResponseWriter, r *http.Request) {
 	// Convert 'id' to an integer
 	accountId, err := strconv.Atoi(idStr)
 	if err != nil {
-		apiError.HandleApiError(w, apiError.WrapError(fmt.Errorf("%w: %v", apiError.InvalidAccountIDErr, idStr)))
+		apiError.HandleApiError(w, apiError.HandleError(fmt.Errorf("%w: %v", apiError.InvalidAccountIDErr, idStr)))
 		return
 	}
 

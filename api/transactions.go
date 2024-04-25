@@ -27,7 +27,7 @@ func CreateTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&req)
 
 	if req.Amount <= 0 {
-		apiError.HandleApiError(w, apiError.WrapError(fmt.Errorf("%w: %v", apiError.InvalidTransactionAmountErr, req.Amount)))
+		apiError.HandleApiError(w, apiError.HandleError(fmt.Errorf("%w: %v", apiError.InvalidTransactionAmountErr, req.Amount)))
 		return
 	}
 

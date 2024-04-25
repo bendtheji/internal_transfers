@@ -19,7 +19,7 @@ func CreateAccount(ctx context.Context, db *sql.DB, id int, balance float64) err
 	query := "INSERT INTO accounts (id, balance) VALUES (?, ?)"
 	_, err := db.ExecContext(ctx, query, id, balance)
 	if err != nil {
-		return apiError.WrapError(err)
+		return apiError.HandleError(err)
 	}
 	return nil
 }
@@ -34,7 +34,7 @@ func GetAccount(ctx context.Context, db *sql.DB, id int) (*Account, error) {
 	account := &Account{}
 	err := row.Scan(&account.ID, &account.Balance)
 	if err != nil {
-		return nil, apiError.WrapError(err)
+		return nil, apiError.HandleError(err)
 	}
 	return account, nil
 }

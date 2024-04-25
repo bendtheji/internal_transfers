@@ -28,7 +28,7 @@ var (
 	InvalidTransactionAmountErr = errors.New("invalid transaction amount")
 )
 
-func WrapError(err error) *ApiError {
+func HandleError(err error) *ApiError {
 	var mysqlErr *mysql.MySQLError
 	switch {
 	case errors.As(err, &mysqlErr):
