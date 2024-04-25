@@ -129,3 +129,12 @@ Transaction completed successfully
 
 ## Testing
 Integration testing should be done for handling different scenarios but due to lack of time, this is a TO-DO.
+
+## TO-DO
+Would want to make the exception handling more elegant and extensible.
+
+The setup for the DB tables could also be handled better using a DB migration tool/library, so that addition of new tables and setting up of the local environment would be easier. 
+
+More tests to be written as well, both unit and integration tests.
+
+To deploy this application on Docker would be a nice-to-have as well.
