@@ -32,14 +32,7 @@ func WrapError(err error) *ApiError {
 	var mysqlErr *mysql.MySQLError
 	switch {
 	case errors.As(err, &mysqlErr):
-		switch mysqlErr.Number {
-		case 1062:
-			return &ApiError{statusCode: http.StatusConflict, message: err.Error()}
-		case 1213:
-			return &ApiError{statusCode: http.StatusServiceUnavailable, message: err.Error()}
-		default:
-			return &ApiError{statusCode: http.StatusInternalServerError, message: err.Error()}
-		}
+		return &ApiError{statusCode: getStatusCodeForMySQLErr(mysqlErr.Number), message: err.Error()}
 
 	case errors.Is(err, sql.ErrNoRows):
 		return &ApiError{statusCode: http.StatusNotFound, message: err.Error()}
@@ -55,8 +48,8 @@ func WrapError(err error) *ApiError {
 
 	case errors.Is(err, context.DeadlineExceeded):
 		return &ApiError{statusCode: http.StatusGatewayTimeout, message: err.Error()}
+
 	default:
-		// return the standard
 		return &ApiError{statusCode: http.StatusInternalServerError, message: "Internal server error"}
 	}
 }
