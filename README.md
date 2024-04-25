@@ -126,3 +126,6 @@ Response Body:
 ```
 Transaction completed successfully
 ```
+
+## Testing
+Integration testing should be done for handling different scenarios but due to lack of time, this is a TO-DO.
